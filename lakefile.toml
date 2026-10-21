@@ -1,0 +1,10 @@
+name = "adjoint-types-lean"
+version = "0.1.0"
+defaultTargets = ["adjoint-types-lean"]
+
+[[lean_lib]]
+name = "AdjointTypesLean"
+
+[[lean_exe]]
+name = "adjoint-types-lean"
+root = "Main"
