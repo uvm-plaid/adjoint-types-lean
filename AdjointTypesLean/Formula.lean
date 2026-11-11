@@ -1,34 +1,70 @@
-import AdjointTypesLean.Syntax
-import Mathlib.Order.Defs.PartialOrder
+module
 
+public import AdjointTypesLean.Syntax
+public import Mathlib.Order.Defs.PartialOrder
+
+public section
 namespace Adjoint
 
-inductive Formula (Mode : Type) [Preorder Mode] : Mode → Type where
+-- Raw syntax: mode constraints are checked separately by WellFormed.
+inductive Formula (Mode : Type) : Type where
+  | atom (m : Mode) (name : String) : Formula Mode
 
-  | atom (m : Mode) (name : String) : Formula Mode m
+  -- Aₘ ⊸ Bₘ
+  | arr : Formula Mode → Formula Mode → Formula Mode
 
-  | arr {m : Mode} : Formula Mode m → Formula Mode m → Formula Mode m
+  | prod : Formula Mode → Formula Mode → Formula Mode
 
-  | prod {m : Mode} : Formula Mode m → Formula Mode m → Formula Mode m
+  | up (m : Mode) (body : Formula Mode) : Formula Mode
 
-  | up {m k : Mode} 
-      (allowed : k ≤ m) 
-      (body : Formula Mode k) : 
-    Formula Mode m
+  | tensor : Formula Mode → Formula Mode → Formula Mode
 
-  | tensor {m : Mode} : Formula Mode m → Formula Mode m → Formula Mode m
+  | unit (m : Mode) : Formula Mode
 
-  | unit (m : Mode) : Formula Mode m
+  | sum : Formula Mode → Formula Mode → Formula Mode
 
-  | sum {m : Mode} : Formula Mode m → Formula Mode m → Formula Mode m
+  | down (m : Mode) (body : Formula Mode) : Formula Mode
 
-  | down {n m : Mode} 
-      (allowed : m ≤ n) 
-      (body : Formula Mode n) :
-    Formula Mode m
+namespace Formula
 
--- AnyFormula = {(m,A) | m : Mode, A : Formula Mode m}
-abbrev AnyFormula (Mode : Type) [Preorder Mode] :=
-  Sigma (Formula Mode)
+variable {Mode : Type}
+
+-- Binary connectives take their mode from the left operand. WellFormed
+-- requires the right operand to have the same mode.
+def mode : Formula Mode → Mode
+  | .atom m _ => m
+
+  | .arr A _ | .prod A _ | .tensor A _ | .sum A _ => A.mode
+
+  | .up m _ | .unit m | .down m _ => m
+
+inductive WellFormed [Preorder Mode] : Formula Mode → Prop where
+  | atom {m name} : WellFormed (.atom m name)
+
+  | arr {A B} :
+    WellFormed A → WellFormed B → A.mode = B.mode →
+    WellFormed (.arr A B)
+
+  | prod {A B} :
+    WellFormed A → WellFormed B → A.mode = B.mode →
+    WellFormed (.prod A B)
+
+  | up {m A} :
+    WellFormed A → A.mode ≤ m → WellFormed (.up m A)
+
+  | tensor {A B} :
+    WellFormed A → WellFormed B → A.mode = B.mode →
+    WellFormed (.tensor A B)
+
+  | unit {m} : WellFormed (.unit m)
+
+  | sum {A B} :
+    WellFormed A → WellFormed B → A.mode = B.mode →
+    WellFormed (.sum A B)
+
+  | down {m A} :
+    WellFormed A → m ≤ A.mode → WellFormed (.down m A)
+
+end Formula
 
 end Adjoint

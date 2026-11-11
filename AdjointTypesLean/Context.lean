@@ -1,74 +1,58 @@
-import AdjointTypesLean.Formula
-import Mathlib.Data.List.Nodup
-import Mathlib.Data.List.Perm.Basic
+module
+
+public import AdjointTypesLean.Formula
+public import Mathlib.Data.Multiset.Basic
+
+public section
 
 namespace Adjoint
 
 -- x : Aₘ
-abbrev Binding (Mode : Type) [Preorder Mode] :=
-  Var × AnyFormula Mode
+abbrev Binding (Mode : Type) :=
+  Var × Formula Mode
 
 -- Γ ::= · | Γ, x : Aₘ
-abbrev Context (Mode : Type) [Preorder Mode] :=
-  List (Binding Mode)
+abbrev Context (Mode : Type) :=
+  Multiset (Binding Mode)
 
-variable {Mode : Type} [Preorder Mode]
+variable {Mode : Type}
 
--- No repeat var names
-def ContextWF (Γ : Context Mode) : Prop :=
-  (Γ.map Prod.fst).Nodup 
-
--- Γ ≥ m
-def Above (Γ : Context Mode) (m : Mode) : Prop :=
-  ∀ b ∈ Γ, m ≤ b.2.1
-
-def Valid (Γ : Context Mode) (m : Mode) : Prop :=
-  ContextWF Γ ∧ Above Γ m
 
 def Fresh (x : Var) (Γ : Context Mode) : Prop :=
-  x ∉ Γ.map Prod.fst
+  ∀ b ∈ Γ, b.1 ≠ x
 
 
--- C ∈ σ(m) = canContract
 inductive Merge (canContract : Mode → Prop) :
     Context Mode → Context Mode → Context Mode → Prop where
 
-  | nil : Merge canContract [] [] []
+  | nil : Merge canContract 0 0 0
 
   | left {Γ₁ Γ₂ Γ : Context Mode}
-      {x : Var} {A : AnyFormula Mode} :
+      {x : Var} {A : Formula Mode} :
     Merge canContract Γ₁ Γ₂ Γ →
     Fresh x Γ →
     Merge canContract
-      ((x, A) :: Γ₁)
+      ((x, A) ::ₘ Γ₁)
       Γ₂
-      ((x, A) :: Γ)
+      ((x, A) ::ₘ Γ)
 
   | right {Γ₁ Γ₂ Γ : Context Mode}
-      {x : Var} {A : AnyFormula Mode} :
+      {x : Var} {A : Formula Mode} :
     Merge canContract Γ₁ Γ₂ Γ →
     Fresh x Γ →
     Merge canContract
       Γ₁
-      ((x, A) :: Γ₂)
-      ((x, A) :: Γ)
-
+      ((x, A) ::ₘ Γ₂)
+      ((x, A) ::ₘ Γ)
 
   | both {Γ₁ Γ₂ Γ : Context Mode}
-      {x : Var} {A : AnyFormula Mode} :
-    canContract A.1 →
+      {x : Var} {A : Formula Mode} :
+    canContract A.mode →
     Merge canContract Γ₁ Γ₂ Γ →
     Fresh x Γ →
     Merge canContract
-      ((x, A) :: Γ₁)
-      ((x, A) :: Γ₂)
-      ((x, A) :: Γ)
-
-  | perm {Γ₁ Γ₂ Γ Δ₁ Δ₂ Δ : Context Mode} :
-    Merge canContract Γ₁ Γ₂ Γ →
-    List.Perm Γ₁ Δ₁ →
-    List.Perm Γ₂ Δ₂ →
-    List.Perm Γ Δ →
-    Merge canContract Δ₁ Δ₂ Δ
+      ((x, A) ::ₘ Γ₁)
+      ((x, A) ::ₘ Γ₂)
+      ((x, A) ::ₘ Γ)
 
 end Adjoint
